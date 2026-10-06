@@ -54,6 +54,7 @@ namespace
 
   void handleSerial()
   {
+    // do while seial is available
     while (Serial.available())
     {
       const char incoming = static_cast<char>(Serial.read());
