@@ -5,6 +5,7 @@ namespace
   constexpr int kServoPin = 13;
   constexpr int kButtonPin = 27;
   constexpr int kLedPin = 25;
+  constexpr int kBuzzerPin = 32;
   constexpr int kStopPulseUs = 1500;
   constexpr int kClockwisePulseUs = 1600;
   constexpr unsigned long kBurstDurationMs = 250;
@@ -48,8 +49,9 @@ namespace
     alertActive = true;
     ledOn = true;
     digitalWrite(kLedPin, HIGH);
+    digitalWrite(kBuzzerPin, HIGH);
     nextLedToggleAt = millis() + kAlertLedToggleMs;
-    Serial.println("Alert active: LED will blink until the button is pressed.");
+    Serial.println("Alert active: LED is blinking and buzzer is sounding until the button is pressed.");
   }
 
   void handleSerial()
@@ -67,7 +69,7 @@ namespace
         }
         else if (serialLine == "?" || serialLine == "help")
         {
-          Serial.println("Send alert to blink the LED. One GPIO27 press triggers one clockwise burst and starts a 3-second cooldown.");
+          Serial.println("Send alert to blink the LED and sound the buzzer. Press GPIO27 to acknowledge.");
         }
         else if (serialLine.length() > 0)
         {
@@ -114,6 +116,7 @@ namespace
           alertActive = false;
           ledOn = false;
           digitalWrite(kLedPin, LOW);
+          digitalWrite(kBuzzerPin, LOW);
           buttonCoolingDown = true;
           buttonReadyAt = millis() + kButtonCooldownMs;
           servo.writeMicroseconds(kClockwisePulseUs);
@@ -150,7 +153,9 @@ void setup()
   Serial.begin(115200);
   pinMode(kButtonPin, INPUT_PULLUP);
   pinMode(kLedPin, OUTPUT);
+  pinMode(kBuzzerPin, OUTPUT);
   digitalWrite(kLedPin, LOW);
+  digitalWrite(kBuzzerPin, LOW);
 
   servo.setPeriodHertz(50);
   servo.attach(kServoPin, 1000, 2000);
@@ -164,7 +169,7 @@ void setup()
   }
 
   servo.writeMicroseconds(kStopPulseUs);
-  Serial.println("Ready. Send alert to blink the LED; one GPIO27 press triggers one clockwise burst.");
+  Serial.println("Ready. Send alert to blink the LED and sound the buzzer; press GPIO27 to acknowledge.");
   Serial.println("After the press, button input is disabled for 3 seconds. Send alert again after cooldown.");
   Serial.println("Adjust kBurstDurationMs to tune the turn; exact 17-degree steps need position feedback.");
 }
