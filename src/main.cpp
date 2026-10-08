@@ -35,14 +35,30 @@ namespace
     return buttonCoolingDown;
   }
 
+  void stopAlert()
+  {
+    alertActive = false;
+    ledOn = false;
+    digitalWrite(kLedPin, LOW);
+    digitalWrite(kBuzzerPin, LOW);
+  }
+
   void startAlert()
   {
-    if (updateCooldown(millis()))
+    const unsigned long now = millis();
+
+    if (updateCooldown(now))
     {
-      const unsigned long secondsLeft = (buttonReadyAt - millis() + 999) / 1000;
+      const unsigned long secondsLeft = (buttonReadyAt - now + 999) / 1000;
       Serial.print("Button is cooling down. Wait ");
       Serial.print(secondsLeft);
       Serial.println(" seconds before starting another alert.");
+      return;
+    }
+
+    if (alertActive)
+    {
+      Serial.println("Alert already active.");
       return;
     }
 
@@ -50,7 +66,7 @@ namespace
     ledOn = true;
     digitalWrite(kLedPin, HIGH);
     digitalWrite(kBuzzerPin, HIGH);
-    nextLedToggleAt = millis() + kAlertLedToggleMs;
+    nextLedToggleAt = now + kAlertLedToggleMs;
     Serial.println("Alert active: LED is blinking and buzzer is sounding until the button is pressed.");
   }
 
@@ -113,10 +129,7 @@ namespace
         }
         else
         {
-          alertActive = false;
-          ledOn = false;
-          digitalWrite(kLedPin, LOW);
-          digitalWrite(kBuzzerPin, LOW);
+          stopAlert();
           buttonCoolingDown = true;
           buttonReadyAt = millis() + kButtonCooldownMs;
           servo.writeMicroseconds(kClockwisePulseUs);
