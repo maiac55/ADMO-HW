@@ -8,7 +8,9 @@ namespace
   constexpr int kBuzzerPin = 32;
   constexpr int kStopPulseUs = 1500;
   constexpr int kClockwisePulseUs = 1600;
-  constexpr unsigned long kBurstDurationMs = 250;
+  constexpr int kCounterClockwisePulseUs = 1400;
+  constexpr unsigned long kBurstDurationMs = 250; // Tune this so 21 steps equal ~360 degrees
+  constexpr unsigned long kFullRotationMs = 1200; // Tune this for the exact 360-degree anti-clockwise reset turn
   constexpr unsigned long kDebounceMs = 40;
   constexpr unsigned long kAlertLedToggleMs = 300;
   constexpr unsigned long kButtonCooldownMs = 3000;
@@ -25,6 +27,8 @@ namespace
   unsigned long buttonReadyAt = 0;
   bool ledOn = false;
   String serialLine;
+
+  int stepCount = 0;
 
   bool updateCooldown(unsigned long now)
   {
@@ -132,10 +136,25 @@ namespace
           stopAlert();
           buttonCoolingDown = true;
           buttonReadyAt = millis() + kButtonCooldownMs;
-          servo.writeMicroseconds(kClockwisePulseUs);
-          burstActive = true;
-          burstEndsAt = millis() + kBurstDurationMs;
-          Serial.println("Alert acknowledged. One clockwise burst started; button locked for 3 seconds.");
+
+          stepCount++;
+          if (stepCount >= 21)
+          {
+            servo.writeMicroseconds(kCounterClockwisePulseUs);
+            burstActive = true;
+            burstEndsAt = millis() + kFullRotationMs;
+            stepCount = 0;
+            Serial.println("Homing: Reached 21 steps. Performing 360-degree anti-clockwise reset.");
+          }
+          else
+          {
+            servo.writeMicroseconds(kClockwisePulseUs);
+            burstActive = true;
+            burstEndsAt = millis() + kBurstDurationMs;
+            Serial.print("Alert acknowledged. Step ");
+            Serial.print(stepCount);
+            Serial.println("/21: Clockwise burst started; button locked for 3 seconds.");
+          }
         }
       }
     }
@@ -149,7 +168,7 @@ namespace
     {
       servo.writeMicroseconds(kStopPulseUs);
       burstActive = false;
-      Serial.println("Burst complete; stopped at current position.");
+      Serial.println("Motion complete; stopped at current position.");
     }
 
     if (alertActive && static_cast<long>(now - nextLedToggleAt) >= 0)
@@ -184,7 +203,7 @@ void setup()
   servo.writeMicroseconds(kStopPulseUs);
   Serial.println("Ready. Send alert to blink the LED and sound the buzzer; press GPIO27 to acknowledge.");
   Serial.println("After the press, button input is disabled for 3 seconds. Send alert again after cooldown.");
-  Serial.println("Adjust kBurstDurationMs to tune the turn; exact 17-degree steps need position feedback.");
+  Serial.println("Adjust kBurstDurationMs and kFullRotationMs to precisely match 21 steps to a full rotation.");
 }
 
 void loop()
