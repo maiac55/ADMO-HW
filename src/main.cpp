@@ -9,8 +9,8 @@ namespace
   constexpr int kStopPulseUs = 1500;
   constexpr int kClockwisePulseUs = 1600;
   constexpr int kCounterClockwisePulseUs = 1400;
-  constexpr unsigned long kBurstDurationMs = 250; // Tune this so 21 steps equal ~360 degrees
-  constexpr unsigned long kFullRotationMs = 1200; // Tune this for the exact 360-degree anti-clockwise reset turn
+  constexpr unsigned long kBurstDurationMs = 171; // Tune this so 21 steps equal ~360 degrees
+  constexpr unsigned long kFullRotationMs = 3600; // Tune this for the exact 360-degree anti-clockwise reset turn
   constexpr unsigned long kDebounceMs = 40;
   constexpr unsigned long kAlertLedToggleMs = 300;
   constexpr unsigned long kButtonCooldownMs = 3000;
