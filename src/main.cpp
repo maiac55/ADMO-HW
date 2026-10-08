@@ -1,16 +1,14 @@
 #include <ESP32Servo.h>
+#include <Arduino.h>
 
 namespace
 {
   constexpr int kServoPin = 13;
   constexpr int kButtonPin = 27;
   constexpr int kLedPin = 25;
-  constexpr int kBuzzerPin = 32;
   constexpr int kStopPulseUs = 1500;
   constexpr int kClockwisePulseUs = 1600;
-  constexpr int kCounterClockwisePulseUs = 1400;
-  constexpr unsigned long kBurstDurationMs = 250; // Tune this so 21 steps equal ~360 degrees
-  constexpr unsigned long kFullRotationMs = 1200; // Tune this for the exact 360-degree anti-clockwise reset turn
+  constexpr unsigned long kBurstDurationMs = 257; // One step = 360/21 = ~17.1 degrees. Tune so 21 steps = exactly 360 degrees
   constexpr unsigned long kDebounceMs = 40;
   constexpr unsigned long kAlertLedToggleMs = 300;
   constexpr unsigned long kButtonCooldownMs = 3000;
@@ -44,7 +42,6 @@ namespace
     alertActive = false;
     ledOn = false;
     digitalWrite(kLedPin, LOW);
-    digitalWrite(kBuzzerPin, LOW);
   }
 
   void startAlert()
@@ -69,9 +66,8 @@ namespace
     alertActive = true;
     ledOn = true;
     digitalWrite(kLedPin, HIGH);
-    digitalWrite(kBuzzerPin, HIGH);
     nextLedToggleAt = now + kAlertLedToggleMs;
-    Serial.println("Alert active: LED is blinking and buzzer is sounding until the button is pressed.");
+    Serial.println("Alert active: LED is blinking until the button is pressed.");
   }
 
   void handleSerial()
@@ -89,7 +85,7 @@ namespace
         }
         else if (serialLine == "?" || serialLine == "help")
         {
-          Serial.println("Send alert to blink the LED and sound the buzzer. Press GPIO27 to acknowledge.");
+          Serial.println("Send alert to blink the LED. Press GPIO27 to acknowledge.");
         }
         else if (serialLine.length() > 0)
         {
@@ -138,22 +134,18 @@ namespace
           buttonReadyAt = millis() + kButtonCooldownMs;
 
           stepCount++;
+          servo.writeMicroseconds(kClockwisePulseUs);
+          burstActive = true;
+          burstEndsAt = millis() + kBurstDurationMs;
+          Serial.print("Alert acknowledged. Step ");
+          Serial.print(stepCount);
+          Serial.println("/21: clockwise step started; button locked for 3 seconds.");
+
           if (stepCount >= 21)
           {
-            servo.writeMicroseconds(kCounterClockwisePulseUs);
-            burstActive = true;
-            burstEndsAt = millis() + kFullRotationMs;
+            // 21 steps x 360/21 degrees = one full turn: back at the starting position
             stepCount = 0;
-            Serial.println("Homing: Reached 21 steps. Performing 360-degree anti-clockwise reset.");
-          }
-          else
-          {
-            servo.writeMicroseconds(kClockwisePulseUs);
-            burstActive = true;
-            burstEndsAt = millis() + kBurstDurationMs;
-            Serial.print("Alert acknowledged. Step ");
-            Serial.print(stepCount);
-            Serial.println("/21: Clockwise burst started; button locked for 3 seconds.");
+            Serial.println("Cycle complete: 21 steps = 360 degrees, back at the start position.");
           }
         }
       }
@@ -185,9 +177,7 @@ void setup()
   Serial.begin(115200);
   pinMode(kButtonPin, INPUT_PULLUP);
   pinMode(kLedPin, OUTPUT);
-  pinMode(kBuzzerPin, OUTPUT);
   digitalWrite(kLedPin, LOW);
-  digitalWrite(kBuzzerPin, LOW);
 
   servo.setPeriodHertz(50);
   servo.attach(kServoPin, 1000, 2000);
@@ -201,9 +191,9 @@ void setup()
   }
 
   servo.writeMicroseconds(kStopPulseUs);
-  Serial.println("Ready. Send alert to blink the LED and sound the buzzer; press GPIO27 to acknowledge.");
+  Serial.println("Ready. Send alert to blink the LED; press GPIO27 to acknowledge.");
   Serial.println("After the press, button input is disabled for 3 seconds. Send alert again after cooldown.");
-  Serial.println("Adjust kBurstDurationMs and kFullRotationMs to precisely match 21 steps to a full rotation.");
+  Serial.println("Adjust kBurstDurationMs so that 21 steps equal exactly one full rotation (360 degrees).");
 }
 
 void loop()
